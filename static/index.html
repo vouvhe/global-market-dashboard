@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Market Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- ── 헤더 ─────────────────────────────────────── -->
+  <header>
+    <div class="header-left">
+      <span class="logo">🌐 Global Market Dashboard</span>
+    </div>
+    <div class="header-right">
+      <span class="updated-label">기준:</span>
+      <span id="updated-time" class="updated-time">-</span>
+      <button id="refresh-btn" class="refresh-btn" title="새로고침">↻ 새로고침</button>
+    </div>
+  </header>
+
+  <!-- ── 메인 컨텐츠 ──────────────────────────────── -->
+  <main>
+
+    <!-- 환율 섹션 -->
+    <section class="market-section">
+      <h2 class="section-title">💱 환율</h2>
+      <div id="cards-fx" class="card-grid"></div>
+    </section>
+
+    <!-- 원자재 섹션 -->
+    <section class="market-section">
+      <h2 class="section-title">🛢️ 원자재</h2>
+      <div id="cards-commodity" class="card-grid"></div>
+    </section>
+
+    <!-- 주요 지수 섹션 -->
+    <section class="market-section">
+      <h2 class="section-title">📈 주요 지수</h2>
+      <div id="cards-index" class="card-grid"></div>
+    </section>
+
+    <!-- 차트 패널 -->
+    <section id="chart-panel" class="chart-panel hidden">
+      <div class="chart-header">
+        <span id="chart-title" class="chart-title"></span>
+        <div class="period-tabs">
+          <button class="period-btn" data-period="1d">1일</button>
+          <button class="period-btn" data-period="5d">1주</button>
+          <button class="period-btn active" data-period="1mo">1개월</button>
+          <button class="period-btn" data-period="3mo">3개월</button>
+          <button class="period-btn" data-period="1y">1년</button>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="market-chart"></canvas>
+        <div id="chart-loading" class="chart-loading hidden">불러오는 중...</div>
+        <div id="chart-error" class="chart-error hidden"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── 로딩 오버레이 ────────────────────────────── -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>데이터를 불러오는 중...</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
