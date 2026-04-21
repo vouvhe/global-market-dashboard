@@ -16,6 +16,7 @@
       <span class="updated-label">기준:</span>
       <span id="updated-time" class="updated-time">-</span>
       <button id="refresh-btn" class="refresh-btn" title="새로고침">↻ 새로고침</button>
+      <button id="premium-btn" class="premium-btn">⭐ 프리미엄 구독</button>
     </div>
   </header>
 
@@ -67,7 +68,43 @@
     <p>데이터를 불러오는 중...</p>
   </div>
 
+  <!-- ── 결제 모달 ────────────────────────────────── -->
+  <div id="payment-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <button class="modal-close" id="payment-modal-close" aria-label="닫기">×</button>
+      <p class="payment-modal-title">프리미엄 구독</p>
+      <p class="payment-modal-sub">실시간 데이터·심층 분석 등 프리미엄 기능을 이용하세요.</p>
+
+      <div class="plan-card">
+        <p class="plan-name">PREMIUM</p>
+        <p class="plan-price">9,900<span class="plan-price-unit">원 / 월</span></p>
+        <ul class="plan-features">
+          <li>실시간 환율·지수 업데이트</li>
+          <li>전체 종목 무제한 차트 조회</li>
+          <li>포트폴리오 알림 서비스</li>
+          <li>광고 없는 쾌적한 환경</li>
+        </ul>
+      </div>
+
+      <div id="payment-method"></div>
+      <div id="agreement"></div>
+
+      <button id="pay-submit-btn" class="pay-submit-btn" disabled>결제하기</button>
+    </div>
+  </div>
+
+  <!-- ── 결제 결과 모달 ─────────────────────────── -->
+  <div id="result-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="text-align:center;">
+      <div id="result-icon" class="result-icon"></div>
+      <p id="result-title" class="result-title"></p>
+      <p id="result-desc" class="result-desc"></p>
+      <button id="result-close-btn" class="result-close-btn">확인</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://js.tosspayments.com/v2/standard"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

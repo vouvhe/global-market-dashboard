@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 import cache
 import data_fetcher
+
+# 토스페이먼츠 테스트 시크릿 키 (실서비스 시 환경변수로 교체)
+TOSS_SECRET_KEY = "test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6"
 
 BASE_DIR = Path(__file__).parent
 
@@ -39,6 +45,42 @@ def get_summary():
     data = data_fetcher.fetch_summary()
     cache.upsert_summary(data)
     return data
+
+
+class PaymentConfirmRequest(BaseModel):
+    paymentKey: str
+    orderId: str
+    amount: int
+
+
+@app.post("/api/payment/confirm")
+async def confirm_payment(body: PaymentConfirmRequest):
+    """토스페이먼츠 결제 승인 API 호출."""
+    credentials = base64.b64encode(f"{TOSS_SECRET_KEY}:".encode()).decode()
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.tosspayments.com/v1/payments/confirm",
+            headers={
+                "Authorization": f"Basic {credentials}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "paymentKey": body.paymentKey,
+                "orderId": body.orderId,
+                "amount": body.amount,
+            },
+            timeout=15.0,
+        )
+
+    if resp.status_code == 200:
+        return resp.json()
+
+    error = resp.json()
+    raise HTTPException(
+        status_code=resp.status_code,
+        detail=error.get("message", "결제 승인에 실패했습니다."),
+    )
 
 
 @app.get("/api/chart/{symbol}")

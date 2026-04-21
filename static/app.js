@@ -273,3 +273,161 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
 
 /* ── 초기 로드 ─────────────────────────────────────── */
 loadSummary();
+handlePaymentRedirect();
+
+/* ═══════════════════════════════════════════════════
+   토스페이먼츠 결제 위젯
+   ═══════════════════════════════════════════════════ */
+const TOSS_CLIENT_KEY = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07W0zPoqfR';
+const PREMIUM_AMOUNT  = 9900;
+
+let tossWidgets = null; // 결제위젯 인스턴스 (모달 열릴 때 생성)
+
+/* ── 주문 ID 생성 ──────────────────────────────────── */
+function generateOrderId() {
+  const ts   = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `ORD-${ts}-${rand}`;
+}
+
+/* ── 결제 모달 열기 ────────────────────────────────── */
+async function openPaymentModal() {
+  const modal     = document.getElementById('payment-modal');
+  const submitBtn = document.getElementById('pay-submit-btn');
+
+  modal.classList.remove('hidden');
+  submitBtn.disabled = true;
+  submitBtn.textContent = '결제 UI 로딩 중...';
+
+  try {
+    // 비회원 결제: '__ANONYMOUS_' 는 토스 ANONYMOUS 상수 실제값
+    const customerKey = '__ANONYMOUS_';
+    const tossPayments = TossPayments(TOSS_CLIENT_KEY);
+    tossWidgets = tossPayments.widgets({ customerKey });
+
+    await tossWidgets.setAmount({ currency: 'KRW', value: PREMIUM_AMOUNT });
+
+    // 결제수단 UI 렌더링
+    await tossWidgets.renderPaymentMethods({
+      selector: '#payment-method',
+      variantKey: 'DEFAULT',
+    });
+
+    // 약관 UI (실패해도 결제수단 UI는 유지)
+    try {
+      await tossWidgets.renderAgreement({
+        selector: '#agreement',
+        variantKey: 'AGREEMENT',
+      });
+    } catch (_) { /* 어드민 미설정 시 무시 */ }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = '결제하기';
+  } catch (err) {
+    console.error('결제 위젯 로드 실패:', err);
+    submitBtn.textContent = '로드 실패 — 다시 시도해 주세요';
+  }
+}
+
+/* ── 결제 모달 닫기 ────────────────────────────────── */
+function closePaymentModal() {
+  document.getElementById('payment-modal').classList.add('hidden');
+  // 위젯 영역 초기화 (재오픈 시 중복 렌더 방지)
+  document.getElementById('payment-method').innerHTML = '';
+  document.getElementById('agreement').innerHTML      = '';
+  tossWidgets = null;
+}
+
+/* ── 결제 요청 ─────────────────────────────────────── */
+async function requestTossPayment() {
+  if (!tossWidgets) return;
+
+  const submitBtn = document.getElementById('pay-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = '처리 중...';
+
+  const baseUrl = window.location.origin + '/';
+
+  try {
+    await tossWidgets.requestPayment({
+      orderId:       generateOrderId(),
+      orderName:     'Global Market Dashboard 프리미엄',
+      customerName:  '구독자',
+      successUrl:    baseUrl + '?payment=success',
+      failUrl:       baseUrl + '?payment=fail',
+    });
+  } catch (err) {
+    // 사용자가 결제창을 닫거나 에러 발생 시
+    submitBtn.disabled = false;
+    submitBtn.textContent = '결제하기';
+    if (err?.code !== 'USER_CANCEL') {
+      console.error('결제 요청 오류:', err);
+    }
+  }
+}
+
+/* ── 결제 결과 처리 (리다이렉트 복귀 시) ─────────── */
+async function handlePaymentRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('payment');
+  if (!status) return;
+
+  // URL 정리 (뒤로가기 시 중복 처리 방지)
+  history.replaceState(null, '', window.location.pathname);
+
+  if (status === 'success') {
+    const paymentKey = params.get('paymentKey');
+    const orderId    = params.get('orderId');
+    const amount     = parseInt(params.get('amount'), 10);
+
+    try {
+      await fetch('/api/payment/confirm', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ paymentKey, orderId, amount }),
+      }).then(r => {
+        if (!r.ok) throw new Error('승인 실패');
+        return r.json();
+      });
+
+      showResultModal(
+        '🎉',
+        '결제 완료!',
+        `프리미엄 구독이 시작되었습니다.\n월 ${PREMIUM_AMOUNT.toLocaleString()}원 · 언제든지 해지 가능`
+      );
+    } catch (err) {
+      showResultModal('❌', '결제 승인 실패', '결제는 완료됐지만 승인 처리 중 오류가 발생했습니다.\n고객센터에 문의해 주세요.');
+    }
+  } else if (status === 'fail') {
+    const message = params.get('message') || '결제가 취소되었습니다.';
+    showResultModal('😢', '결제 실패', message);
+  }
+}
+
+/* ── 결과 모달 표시 ────────────────────────────────── */
+function showResultModal(icon, title, desc) {
+  document.getElementById('result-icon').textContent  = icon;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-desc').textContent  = desc;
+  document.getElementById('result-modal').classList.remove('hidden');
+}
+
+/* ── 모달 이벤트 바인딩 ────────────────────────────── */
+document.getElementById('premium-btn')
+  .addEventListener('click', openPaymentModal);
+
+document.getElementById('payment-modal-close')
+  .addEventListener('click', closePaymentModal);
+
+document.getElementById('payment-modal')
+  .addEventListener('click', e => {
+    if (e.target === e.currentTarget) closePaymentModal();
+  });
+
+document.getElementById('pay-submit-btn')
+  .addEventListener('click', requestTossPayment);
+
+document.getElementById('result-close-btn')
+  .addEventListener('click', () => {
+    document.getElementById('result-modal').classList.add('hidden');
+  });
